@@ -469,6 +469,7 @@ th {
 | `Qwen3ForCausalLM` | Qwen3 | `Qwen/Qwen3-8B`, etc. | ✅︎ | ✅︎ |
 | `Qwen3MoeForCausalLM` | Qwen3MoE | `Qwen/Qwen3-30B-A3B`, etc. | ✅︎ | ✅︎ |
 | `Qwen3NextForCausalLM` | Qwen3NextMoE | `Qwen/Qwen3-Next-80B-A3B-Instruct`, etc. | ✅︎ | ✅︎ |
+| `Qwen4ExpForCausalLM` | Qwen3.8-Flash-Next (text-only) | `Qwen/Qwen3.8-Flash-Next`, etc. | ✅︎ | |
 | `Rnj1ForCausalLM` | Rnj1 | `EssentialAI/rnj-1-instruct`, etc. | | |
 | `SarvamMoEForCausalLM` | Sarvam 2 | `sarvamai/sarvam2-30b-a3b`, etc. | ✅︎ | ✅︎ |
 | `SarvamMLAForCausalLM` | Sarvam 2 | `sarvamai/sarvam2-105b-a9b`, etc. | | ✅︎ |
@@ -621,6 +622,7 @@ These models primarily accept the [`LLM.generate`](./generative_models.md#llmgen
 | `Qwen2_5OmniThinkerForConditionalGeneration` | Qwen2.5-Omni | T + I<sup>E+</sup> + V<sup>E+</sup> + A<sup>+</sup> | `Qwen/Qwen2.5-Omni-3B`, `Qwen/Qwen2.5-Omni-7B` | ✅︎ | ✅︎ |
 | `Qwen3_5ForConditionalGeneration` | Qwen3.5 | T + I<sup>E+</sup> + V<sup>E+</sup> | `Qwen/Qwen3.5-9B-Instruct`, etc. | ✅︎ | ✅︎ |
 | `Qwen3_5MoeForConditionalGeneration` | Qwen3.5-MOE | T + I<sup>E+</sup> + V<sup>E+</sup> | `Qwen/Qwen3.5-35B-A3B-Instruct`, etc. | ✅︎ | ✅︎ |
+| `Qwen4ExpForConditionalGeneration` | Qwen3.8-Flash-Next | T + I<sup>E+</sup> + V<sup>E+</sup> | `Qwen/Qwen3.8-Flash-Next`, etc. | ✅︎ | |
 | `Qwen3VLForConditionalGeneration` <sup>Q</sup> | Qwen3-VL | T + I<sup>E+</sup> + V<sup>E+</sup> | `Qwen/Qwen3-VL-4B-Instruct`, etc. | ✅︎ | ✅︎ |
 | `Qwen3VLMoeForConditionalGeneration` <sup>Q</sup> | Qwen3-VL-MOE | T + I<sup>E+</sup> + V<sup>E+</sup> | `Qwen/Qwen3-VL-30B-A3B-Instruct`, etc. | ✅︎ | ✅︎ |
 | `Qwen3OmniMoeThinkerForConditionalGeneration` | Qwen3-Omni | T + I<sup>E+</sup> + V<sup>E+</sup> + A<sup>+</sup> | `Qwen/Qwen3-Omni-30B-A3B-Instruct`, `Qwen/Qwen3-Omni-30B-A3B-Thinking` | ✅︎ | ✅︎ |
@@ -654,6 +656,18 @@ Some models are supported only via the [Transformers modeling backend](#transfor
     decoded into frames and audio, so they require both towers. The checkpoint also
     ships one MTP layer, enabled with
     `--speculative-config '{"method":"mtp","num_speculative_tokens":1}'`.
+
+!!! note
+    For `Qwen4ExpForConditionalGeneration` (Qwen3.8-Flash-Next):
+    - The checkpoint ships one MTP layer, enabled with
+      `--speculative-config '{"method":"mtp","num_speculative_tokens":1}'`.
+      The model is a Gated DeltaNet hybrid, so speculative decoding reserves
+      extra recurrent-state blocks per request; see
+      [Hybrid Mamba and GDN models](../features/speculative_decoding/mtp.md#hybrid-mamba-and-gdn-models)
+      before enabling it for high-concurrency serving.
+    - Pipeline parallelism is not supported for checkpoints with the n-gram
+      (PLE) embedding layer, which includes all released Qwen3.8-Flash-Next
+      checkpoints; use tensor and expert parallelism instead.
 
 !!! note
     `Gemma3nForConditionalGeneration` is only supported on V1 due to shared KV caching and it depends on `timm>=1.0.17` to make use of its

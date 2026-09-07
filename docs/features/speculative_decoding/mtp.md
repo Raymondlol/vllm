@@ -67,6 +67,42 @@ vllm serve XiaomiMiMo/MiMo-7B-Base \
     --speculative-config '{"method":"mtp","num_speculative_tokens":1}'
 ```
 
+## Hybrid Mamba and GDN Models
+
+Models that mix linear-attention (Mamba / Gated DeltaNet) layers with full
+attention, such as Qwen3-Next, Qwen3.5, Qwen3.8 and Qwen3.8-Flash-Next, keep a
+fixed-size recurrent state per request in the KV cache pool. With speculative
+decoding, every Mamba KV cache group reserves `1 + num_speculative_tokens`
+state blocks per request instead of one, so that rejected draft tokens can be
+rolled back, and those blocks stay allocated for the lifetime of the request.
+
+This changes how many requests fit in the pool. For Qwen3.8-27B (48 GDN layers
+in 3 KV cache groups, `mamba_cache_mode="align"`, the default when prefix
+caching is enabled) a request shorter than one attention block needs:
+
+| `num_speculative_tokens` | Blocks per request       |
+|--------------------------|--------------------------|
+| 0                        | 1 attention + 3 × 1 = 4  |
+| 1                        | 1 attention + 3 × 2 = 7  |
+| 2                        | 1 attention + 3 × 3 = 10 |
+
+The scheduler admits about `(num_gpu_blocks - 1) / blocks_per_request`
+concurrent requests, whatever `--max-num-seqs` says. The MTP layer's weights and
+the extra draft state also make each block slightly larger, so `num_gpu_blocks`
+itself drops when MTP is enabled. On a small pool this can cap concurrency at a
+handful of requests and make MTP slower than plain decoding at higher batch
+sizes, even with a high acceptance rate.
+
+To check, compare the startup line `Maximum concurrency for N tokens per
+request` with and without `--speculative-config`. The figure is computed at
+`--max-model-len`, so treat it as a ratio between the two runs rather than an
+absolute concurrency. If the pool is the limit:
+
+- Lower `--max-model-len` or the weight footprint (for example, a quantized
+  checkpoint) to free KV cache memory.
+- Reduce `num_speculative_tokens`.
+- Disable speculative decoding for high-concurrency serving.
+
 ## Notes
 
 - MTP only works for model families that support MTP in vLLM.
